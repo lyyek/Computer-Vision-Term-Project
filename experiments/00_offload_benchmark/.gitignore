@@ -1,0 +1,5 @@
+# 내려받은 POPE 질문 파일과 COCO 이미지 (다시 받을 수 있음)
+data/
+__pycache__/
+# 개발용 dry-run 결과. 실제 측정 결과(results/*.json, summary.md)는 커밋한다.
+results/dryrun-*

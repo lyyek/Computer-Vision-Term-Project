@@ -1,0 +1,10 @@
+# PyTorch는 CUDA 빌드를 골라야 해서 따로 설치한다 (README 1단계):
+#   pip install torch==2.5.1 torchvision==0.20.1 --index-url https://download.pytorch.org/whl/cu118
+transformers==4.49.0
+accelerate==1.3.0
+bitsandbytes==0.45.0
+pillow
+pyyaml
+psutil
+sentencepiece
+protobuf

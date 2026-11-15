@@ -146,7 +146,7 @@
   - CUDA, conda/python
   - **CPU RAM 용량** (offload에 32GB 이상 필요 [추정])
   - 디스크 여유 공간
-- [ ] **환경 전략 결정.** PAI의 `environment.yml`(torch 2.0.1 + transformers 4.37.0)로 시작하는 것을 권장한다. torch 2.15 이상은 Volta 지원이 중단됐다는 보고가 있다 [미검증].
+- [ ] **환경 전략.** 벤치마크는 독립 환경 `c3bench`(torch 2.5.1+cu118, transformers 4.49.0, accelerate 1.3.0, bitsandbytes 0.45.0)로 돌린다. 버전이 저장소에 실제로 있는 것은 확인했고 [검증], Volta 지원 여부는 `check_env.py`가 확인한다. PAI 공식 코드 재현용 환경(torch 2.0.1 + transformers 4.37.0)은 W1에 따로 만든다. torch 2.15 이상은 Volta 지원이 중단됐다는 보고가 있다 [미검증].
 - [ ] **(사용자 승인 필요) 다운로드:**
   - LLaVA-1.5-7B 가중치 약 14GB [추정]
   - COCO val2014 약 6GB [미검증]
@@ -183,7 +183,13 @@
 
 ---
 
-## 6. fp16 offload 속도 측정 스크립트 사양 (내일 구현)
+## 6. fp16 offload 속도 측정 스크립트 사양
+
+> **[2026-11-16] 구현 완료, GPU 실행은 아직 안 함.** 코드는 [experiments/00_offload_benchmark/](experiments/00_offload_benchmark/)에 있고, 실행 방법은 그 폴더의 [README.md](experiments/00_offload_benchmark/README.md)에 있다.
+> - 실행 순서: `check_env.py` → 모델 다운로드(14.13 GB) → `bench.py --mode nf4` → `bench.py --mode fp16_offload` → `summarize.py`
+> - Mac에서 소형 더미 모델로 로직만 확인했다(`--dry-run`). 실제 7B 모델의 offload 로딩, Volta에서의 bitsandbytes 동작은 GPU에서 처음 실행된다.
+> - 아래 사양과 다른 점: 모델은 HF 형식 `llava-hf/llava-1.5-7b-hf`를 쓴다. 문항 수 기본값은 120개(이미지 20장)다. COCO는 전체를 받지 않고 필요한 이미지만 받는다.
+> - 결과(`results/*.json`, `results/summary.md`)가 나오면 제안서 Resources의 `[TODO]`를 채우고, 이 절의 판정 기준으로 fp16/NF4 방침을 정한다.
 
 - **목적.** fp16 원본 LLaVA-1.5-7B로 POPE를 돌릴 수 있는지(재현 기준점 확보), NF4와 얼마나 다른지 판단한다.
 - **위치(제안).** `experiments/00_offload_benchmark/`에 config(yaml)와 script, 결과 `results.json`을 둔다.
@@ -269,6 +275,7 @@
 | [CLAUDE.md](CLAUDE.md) | 연구 파트너 페르소나와 지침. 6절은 완료된 단계 |
 | HANDOFF.md | 이 파일. 현재 상태와 다음 할 일 |
 | [proposal/C3_proposal_draft_v0.md](proposal/C3_proposal_draft_v0.md) | 제안서 초안 v0 (영어) |
+| [experiments/00_offload_benchmark/](experiments/00_offload_benchmark/) | fp16 offload vs NF4 벤치마크 (`check_env.py`, `bench.py`, `summarize.py`, `config.yaml`, README) |
 | [reports/CV 텀프로젝트 주제 탐색.md](reports/CV%20텀프로젝트%20주제%20탐색.md) | 주제 탐색 최종 보고서 (C1–C7, 비교표, Top-3 심층 분석) |
 | `research_notes/CV 텀프로젝트 주제 탐색/` | 조사 노트 7개 (novelty_hallucination.md, vlm_generation_ct.md, iccv2027_titanv_constraints.md 등) |
 | [TermProject_2026Fall.pdf](TermProject_2026Fall.pdf) | 강의 프로젝트 안내 |

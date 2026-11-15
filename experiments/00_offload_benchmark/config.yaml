@@ -1,0 +1,46 @@
+# fp16(CPU offload) vs 4-bit NF4 벤치마크 설정
+# 실행: python bench.py --mode nf4 / python bench.py --mode fp16_offload
+# CLI 옵션(--gpu-mem, --num-questions 등)이 이 파일의 값을 덮어쓴다.
+
+seed: 0
+
+model:
+  id: llava-hf/llava-1.5-7b-hf   # HF transformers 형식의 LLaVA-1.5-7B (가중치 14.13 GB)
+  revision: null                 # 재현성: 첫 실행 후 results의 model_commit 값을 여기에 고정
+  attn_implementation: null      # null = 라이브러리 기본값. 본 실험(PAI/VAR)은 attention을 고쳐야 해서 "eager"가 필요함
+
+data:
+  # POPE-COCO adversarial split (3,000문항, 이미지당 6문항). 앞에서부터 num_questions개만 쓴다.
+  pope_url: https://raw.githubusercontent.com/RUCAIBox/POPE/main/output/coco/coco_pope_adversarial.json
+  # 필요한 이미지만 한 장씩 받는다. (https는 인증서 문제로 실패해서 http를 쓴다.)
+  coco_image_url: "http://images.cocodataset.org/val2014/{image}"
+  dir: data
+  num_questions: 120             # 이미지 20장 × 6문항. yes/no가 60개씩 균형
+
+prompt:
+  # 원본 LLaVA의 llava_v1 대화 템플릿. 본 실험에서는 PAI 공식 코드의 프롬프트와 일치하는지 다시 확인할 것.
+  system: "A chat between a curious human and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the human's questions."
+  probe: "{system} USER: <image>\n{question} ASSISTANT:"
+  caption_question: "Please describe this image in detail."
+
+timing:
+  warmup: 3                      # 기록에서 제외하는 준비 실행 횟수
+  pope_full_size: 9000           # POPE-COCO 3개 split 전체 문항 수 (소요 시간 환산용)
+  chair_images: 500              # CHAIR 평가 이미지 수 (소요 시간 환산용)
+  chair_avg_tokens: 120          # 캡션 평균 길이 가정값 [추정]
+
+generation:
+  num_images: 3                  # 캡션 생성 속도 측정에 쓸 이미지 수 (0이면 생략)
+  max_new_tokens: 32
+
+modes:
+  fp16_offload:
+    kind: fp16_offload
+    gpu_max_memory: 10GiB        # GPU에 올릴 가중치 상한. 나머지 layer는 CPU RAM에 둔다
+    cpu_max_memory: 24GiB        # CPU RAM에 둘 가중치 상한. 부족하면 disk offload 오류가 난다
+  nf4:
+    kind: nf4
+    quant_type: nf4
+    double_quant: true           # 원본 LLaVA repo의 load_4bit 설정과 같게 맞춤 [기억 기준, 미검증]
+    # 양자화하지 않고 fp16으로 남길 모듈. 원본 LLaVA repo도 vision tower는 양자화하지 않는다.
+    skip_modules: [vision_tower, multi_modal_projector, lm_head, language_model.lm_head]
